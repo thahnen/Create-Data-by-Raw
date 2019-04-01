@@ -1,7 +1,8 @@
 #include <iostream>
 #include <vector>
-
 #include <opencv2/opencv.hpp>
+
+#include "contour_worker.h"
 
 
 using namespace std;
@@ -34,8 +35,36 @@ void create_using_morph(VideoCapture vid) {
 }
 
 
-void get_contours_by_thresh(double thresh) {
-    // damit unterschiedliche Bilder zum Vergleich erstellt werden koennen!
+// Um unterschiedliche Bilder zu vergleichen!
+Mat get_hull_by_thresh(Mat src, double thresh) {
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
+
+    findContours(src, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+    // TODO: Hier alle Kontouren aussortieren!
+    // 1) die kleiner als Threshold
+    // 2) Mittelpunkt der kleineren Fläche in der groesseren? -> kommt irgendwann
+    for (auto it = contours.begin(); it != contours.end();) {
+        double area = contourArea(*it, false);
+        if (area < thresh) {
+            it = contours.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    vector<vector<Point>> hull(contours.size());
+    for (int i=0; i<contours.size(); i++) {
+        convexHull(Mat(contours[i]), hull[i], false);
+    }
+
+    Mat hull_img = Mat::zeros(src.size(), src.type());
+    for (int i=0; i<contours.size(); i++) {
+        drawContours(hull_img, hull, i, 255);
+    }
+
+    return hull_img;
 }
 
 
@@ -54,61 +83,60 @@ void create_using_added_frames(VideoCapture vid) {
             break;
         }
 
-        Mat added = frame1 + frame2;
-        cvtColor(added, added, COLOR_BGR2GRAY);
+        // Muss gemacht werden, da beide Bilder eigentlich so vorliegen!
+        cvtColor(frame1, frame1, COLOR_BGR2GRAY);
+        cvtColor(frame2, frame2, COLOR_BGR2GRAY);
 
-        imshow("Addiert", added);
+        Mat added = frame1 + frame2;
+
+        // Muss gemacht werden, da durch Konvertiertung zum Video andere Graustufen mit eingebracht wurden!
+        threshold(added, added, 127, 255, THRESH_BINARY);
 
         // Hier Hit-or-Miss Operator um kleine Elemente zu loeschen!
-        Mat kernel = (Mat_<int>(5, 5) <<
-            1, 1, 1, 1, 1,
-            1, 0, 0, 0, 1,
-            1, 0, -1, 0, 1,
-            1, 0, 0, 0, 1,
-            1, 1, 1, 1, 1
-        );
-
-        Mat output_img;
-        morphologyEx(added, output_img, MORPH_HITMISS, kernel);
-        //output_img = added - output_img;
-        imshow("Hit-or-Miss", output_img);
+        Mat hom_1x1 = hit_or_miss(added, (Mat_<int>(3, 3) <<
+                -1, -1, -1,
+                -1,  1, -1,
+                -1, -1, -1)
+                );
+        imshow("Hit-or-Miss (1x1)", hom_1x1);
 
 
-        vector<vector<Point>> contours;
-        vector<Vec4i> hierarchy;
+        // Huellen berechnen lassen
+        Mat hull = Mat::zeros(hom_1x1.size(), hom_1x1.type());
+        vector<vector<Point>> hulls = get_hulls_by_thresh(hom_1x1, 0);
+        for (int i=0; i<hulls.size(); i++) {
+            drawContours(hull, hulls, i, 255);
+        }
+        imshow("Hull (HOM-1x1)", hull);
 
-        findContours(added, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
 
-        // TODO: Hier alle Kontouren aussortieren!
-        // 1) die kleiner als Threshold
-        // -) die in anderer Kontour vollstaendig liegen! -> Idee war gut dauert aber Jahre
-        // 2) Mittelpunkt der kleineren Fläche in der größeren?
-        double thresh = 5;
-        for (auto it = contours.begin(); it != contours.end();) {
-            double area = contourArea(*it, false);
-            if (area < thresh) {
-                it = contours.erase(it);
-            } else {
-                ++it;
+        // Fuer jede Huelle die naechste berechnen, damit diese zueinander gehoeren koennen
+        vector<Moments> momente(hulls.size());
+        for (int i=0; i<momente.size(); i++) {
+            momente[i] = moments(hulls[i], false);
+        }
+
+        for (auto it = momente.begin(); it != momente.end();) {
+            int naechster = -1;
+            for (auto it2 = momente.begin(); it2 != momente.end();) {
+                if (it != it2) {
+                    // TODO: hier den Abstand zwischen den Mittelpunkten suchen und wenn kleiner als alter eintragen!
+                    //int iterator_1_int = it2-momente.begin();
+                    //Point2f mitte()
+                }
             }
         }
 
-        vector<vector<Point>> hull(contours.size());
-        for (int i=0; i<contours.size(); i++) {
-            convexHull(Mat(contours[i]), hull[i], false);
-        }
 
-        Mat hull_img = Mat::zeros(added.size(), added.type());
-        for (int i=0; i<contours.size(); i++) {
-            drawContours(hull_img, hull, i, 255);
-        }
 
-        imshow("Hull", hull_img);
         waitKey(0);
     }
 }
 
 
+/***********************************************************************************************************************
+ *
+ ***********************************************************************************************************************/
 int main() {
     VideoCapture vid("../media/01.mp4");
     if (!vid.isOpened()) {

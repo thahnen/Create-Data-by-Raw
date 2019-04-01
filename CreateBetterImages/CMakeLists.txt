@@ -16,7 +16,7 @@ include_directories(./include)
 file(GLOB HEADERS "src/*/*.cpp" "src/*.cpp")
 file(GLOB SOURCES "include/*/*.h" "include/*.h")
 
-add_executable(CreateBetterImages ${SOURCES} ${HEADERS} main.cpp)
+add_executable(CreateBetterImages ${SOURCES} ${HEADERS} main.cpp include/contour_worker.h)
 
 target_link_libraries(CreateBetterImages ${OpenCV_LIBS})
 target_link_libraries(CreateBetterImages ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})

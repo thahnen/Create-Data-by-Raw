@@ -88,6 +88,9 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="/home/thahnen/GitHub/Create-Data-by-Raw/CreateBetterImages/include/contour_worker.h">
+			<Option target="CreateBetterImages"/>
+		</Unit>
 		<Unit filename="/home/thahnen/GitHub/Create-Data-by-Raw/CreateBetterImages/main.cpp">
 			<Option target="CreateBetterImages"/>
 		</Unit>
