@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#include <chrono>
+
 #include <opencv2/opencv.hpp>
 
 #include "contour_worker.h"
@@ -99,15 +101,36 @@ void create_using_added_frames(VideoCapture vid) {
                 -1, -1, -1)
                 );
         imshow("Hit-or-Miss (1x1)", hom_1x1);
+        waitKey(0);
 
 
         // Huellen berechnen lassen
         Mat hull = Mat::zeros(hom_1x1.size(), hom_1x1.type());
+        auto start = chrono::steady_clock::now();
         vector<vector<Point>> hulls = get_hulls_by_thresh(hom_1x1, 0);
+        auto diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
+        cout << "Verbrauchte Zeit um Hull zu erzeugen: " << diff << " Milliseconds" << endl;
         for (int i=0; i<hulls.size(); i++) {
             drawContours(hull, hulls, i, 255);
         }
         imshow("Hull (HOM-1x1)", hull);
+        cout << "Hull-Size " << hulls.size() << endl;
+
+        Mat hull2 = Mat::zeros(hom_1x1.size(), hom_1x1.type());
+        start = chrono::steady_clock::now();
+        hulls = get_hulls_by_thresh2(hom_1x1, 0);
+        diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
+        cout << "Verbrauchte Zeit um Hull2 zu erzeugen: " << diff << " Milliseconds" << endl;
+        for (int i=0; i<hulls.size(); i++) {
+            drawContours(hull2, hulls, i, 255);
+        }
+        imshow("Hull2 (HOM-1x1)", hull2);
+        cout << "Hull2-Size " << hulls.size() << endl;
+        waitKey(0);
+
+
+        // Das hier kommt weg, wen das hier nach erst einmal richtig implementiert ist!
+        continue;
 
 
         // Fuer jede Huelle die naechste berechnen, damit diese zueinander gehoeren koennen

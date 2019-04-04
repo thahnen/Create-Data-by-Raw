@@ -80,28 +80,72 @@ vector<vector<Point>> get_hulls_by_thresh(Mat src, double thresh_area) {
 
 
 
-    // Durch alle Hulls (ohne das erste) iterieren, ob Hull in einem anderen liegt
-    for (auto it = hull.begin()+1; it != hull.end();) {
+    // Durch alle Hulls (ohne das erste) vorwaerts iterieren, ob Hull in einem anderen liegt
+    for (auto it = hull.begin()+1; it < hull.end();) {
 
-        // TODO: das tritt auf, weil der Iterator irgendwie am Ende/ hinter dem Ende ist -> nicht sehr schoen geloest
-        if ((*it).size() < 1) break;
-
-        for (auto it2 = hull.begin(); it2 != it;) {
-            // Ueberpruefen, ob Flache halb so gross ist wie grosse Flaeche oder kleiner
-            if (contourArea(*it, false)*2 < contourArea(*it2, false)) {
+        for (auto davor = hull.begin(); davor < it;) {
+            // Ueberpruefen, ob Flaeche so gross ist wie grosse Flaeche oder kleiner
+            if (contourArea(*it, false) < contourArea(*davor, false)) {
                 // Annahme: es liegt in dem anderen Hull
                 Moments m = moments(*it, false);
 
-                if (pointPolygonTest(*it2, Point2f(m.m10/m.m00, m.m01/m.m00), false) > 0) {
+                if (pointPolygonTest(*davor, Point2f(m.m10/m.m00, m.m01/m.m00), false) > 0) {
                     // liegt drin, kann geloescht werden!
                     it = hull.erase(it);
                     goto weiter;
                 }
             }
-            ++it2;
+            ++davor;
         }
         weiter:
         ++it;
+    }
+
+    return hull;
+}
+
+
+/***********************************************************************************************************************
+ *
+ *      get_hulls_by_thresh2 ( Mat src, double area_thresh ) => vector<vector<Point>>
+ *      =============================================================================
+ *
+ *      Ruft intern get_hulls_by_thresh auf, iteriert danach nur noch einmal rueckwaerts durch den Vector um
+ *      zu ueberpruefen, ob das jeweilige Hull in einem danach liegt?
+ *
+ *      TODO: irgendwie wird noch nichts geloescht, aber warum?
+ *      TODO: ggf andersherum machen:
+ *              => 1) hochzaehlen, das zu ueberpruefen vom aktuellen runterzaehlen
+ *              == 2) runterzaehlen, das zu ueberpruefen vom aktuellen hochzaehlen
+ *
+ ***********************************************************************************************************************/
+vector<vector<Point>> get_hulls_by_thresh2(Mat src, double thresh_area) {
+    vector<vector<Point>> hull = get_hulls_by_thresh(src, thresh_area);
+
+    // Durch alle Hulls (ohne das letzte) rueckwaerts iterieren, ob Hull in einem anderen liegt
+    for (auto it = hull.end()-2; it >= hull.begin();) {
+
+        for (auto danach = it+1; danach != hull.end();) {
+            // Ueberpruefen, ob Flaeche so gross ist wie grosse Flaeche oder kleiner
+
+            if (contourArea(*it, false) < contourArea(*danach, false)) {
+                cout << "Kleiner, kann also in der danach liegen!" << endl;
+
+                // Mittelpunkt der aktuellen Flaeche berechnen und gegen das folgende Hull testen
+                Moments m = moments(*it, false);
+
+                if (pointPolygonTest(*danach, Point2f(m.m10/m.m00, m.m01/m.m00), false) > 0) {
+                    cout << "PPT war erfolgreich -> liegt in anderem" << endl;
+
+                    // liegt drin, kann geloescht werden!
+                    it = hull.erase(it)-1; //geht einen weiter nach hinten im Array, deshalb einen weiter nach hinten!
+                    goto weiter2;
+                }
+            }
+            ++danach;
+        }
+        weiter2:
+        --it;
     }
 
     return hull;
