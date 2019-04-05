@@ -80,6 +80,11 @@ vector<vector<Point>> get_hulls_by_thresh(Mat src, double thresh_area) {
 
 
 
+    /*
+     *      vlt ggf beim durchiterieren ueberpruefen, wenn element groesser ob ein anderes ist auch
+     *      ob das andere jeweils groesser und dann test ob drin liegt und dann zum loeschen merken!
+     *      => koennte das "get_hulls_by_thresh2" ersparen?
+     */
     // Durch alle Hulls (ohne das erste) vorwaerts iterieren, ob Hull in einem anderen liegt
     for (auto it = hull.begin()+1; it < hull.end();) {
 
@@ -94,7 +99,7 @@ vector<vector<Point>> get_hulls_by_thresh(Mat src, double thresh_area) {
                     it = hull.erase(it);
                     goto weiter;
                 }
-            }
+            } // hier also die zweite Bedingung!
             ++davor;
         }
         weiter:
@@ -129,7 +134,6 @@ vector<vector<Point>> get_hulls_by_thresh2(Mat src, double thresh_area) {
             // Ueberpruefen, ob Flaeche so gross ist wie grosse Flaeche oder kleiner
 
             if (contourArea(*it, false) < contourArea(*danach, false)) {
-                cout << "Kleiner, kann also in der danach liegen!" << endl;
 
                 // Mittelpunkt der aktuellen Flaeche berechnen und gegen das folgende Hull testen
                 Moments m = moments(*it, false);

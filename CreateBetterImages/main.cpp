@@ -11,6 +11,15 @@ using namespace std;
 using namespace cv;
 
 
+/***********************************************************************************************************************
+ *
+ *      Aus der FPS koennte man sich herleiten wie lange in Bild maximal zur Bearbeitung benutzt werden darf,
+ *      damit das Programm noch echtzeitfaehig ist!
+ *      Es sind pro Ordner 1000 Bilder und ein Ordner hat die Zeitspanne ?
+ *
+ ***********************************************************************************************************************/
+
+
 void create_using_morph(VideoCapture vid) {
     for (;;) {
         Mat frame;
