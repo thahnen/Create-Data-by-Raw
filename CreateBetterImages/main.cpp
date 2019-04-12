@@ -1,21 +1,21 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
-
 #include <opencv2/opencv.hpp>
 
 #include "contour_worker.h"
 
-
 using namespace std;
 using namespace cv;
+
+#define using_3_frames true
 
 
 /***********************************************************************************************************************
  *
  *      Aus der FPS koennte man sich herleiten wie lange in Bild maximal zur Bearbeitung benutzt werden darf,
  *      damit das Programm noch echtzeitfaehig ist!
- *      Es sind pro Ordner 1000 Bilder und ein Ordner hat die Zeitspanne ?
+ *      Es sind pro Ordner 1000 Bilder und ein Ordner hat die Zeitspanne 1min?
  *
  ***********************************************************************************************************************/
 
@@ -87,58 +87,69 @@ void create_using_added_frames(VideoCapture vid) {
             cout << "1. Frame im letzten Schritt leer!" << endl;
             break;
         }
+        cvtColor(frame1, frame1, COLOR_BGR2GRAY);
+
         Mat frame2;
         vid >> frame2;
         if (frame2.empty()) {
             cout << "2. Frame im letzten Schritt leer!" << endl;
             break;
         }
-
-        // Muss gemacht werden, da beide Bilder eigentlich so vorliegen!
-        cvtColor(frame1, frame1, COLOR_BGR2GRAY);
         cvtColor(frame2, frame2, COLOR_BGR2GRAY);
 
+        #if using_3_frames
+        Mat frame3;
+        vid >> frame3;
+        if (frame3.empty()) {
+            cout << "3. Frame im letzten Schritt leer!" << endl;
+            break;
+        }
+        cvtColor(frame3, frame3, COLOR_BGR2GRAY);
+        Mat added = frame1 + frame2 + frame3;
+        #else
         Mat added = frame1 + frame2;
+        #endif
 
         // Muss gemacht werden, da durch Konvertiertung zum Video andere Graustufen mit eingebracht wurden!
         threshold(added, added, 127, 255, THRESH_BINARY);
+        //imshow("Added", added);
 
         // Hier Hit-or-Miss Operator um kleine Elemente zu loeschen!
+        auto start = chrono::steady_clock::now();
         Mat hom_1x1 = hit_or_miss(added, (Mat_<int>(3, 3) <<
                 -1, -1, -1,
                 -1,  1, -1,
                 -1, -1, -1)
                 );
+        auto diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
+        cout << "Verbrauchte Zeit um Hit-or-Miss zu erzeugen: " << diff << " Milliseconds" << endl;
         imshow("Hit-or-Miss (1x1)", hom_1x1);
-        waitKey(0);
 
 
         // Huellen berechnen lassen
         Mat hull = Mat::zeros(hom_1x1.size(), hom_1x1.type());
-        auto start = chrono::steady_clock::now();
+        start = chrono::steady_clock::now();
         vector<vector<Point>> hulls = get_hulls_by_thresh(hom_1x1, 0);
-        auto diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
+        diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
         cout << "Verbrauchte Zeit um Hull zu erzeugen: " << diff << " Milliseconds" << endl;
         for (int i=0; i<hulls.size(); i++) {
             drawContours(hull, hulls, i, 255);
         }
         imshow("Hull (HOM-1x1)", hull);
-        cout << "Hull-Size " << hulls.size() << endl;
+        cout << "Hull-Size: " << hulls.size() << endl;
 
-        Mat hull2 = Mat::zeros(hom_1x1.size(), hom_1x1.type());
-        start = chrono::steady_clock::now();
-        hulls = get_hulls_by_thresh2(hom_1x1, 0);
-        diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
-        cout << "Verbrauchte Zeit um Hull2 zu erzeugen: " << diff << " Milliseconds" << endl;
-        for (int i=0; i<hulls.size(); i++) {
-            drawContours(hull2, hulls, i, 255);
+
+        // mal fuellen
+        Mat filled = hull.clone();
+        for (vector<Point> huelle: hulls) {
+            fillConvexPoly(filled, &huelle[0], huelle.size(), Scalar(255.0));
         }
-        imshow("Hull2 (HOM-1x1)", hull2);
-        cout << "Hull2-Size " << hulls.size() << endl;
+        imshow("Gefuellte Huellen", filled);
+        morphologyEx(filled, filled, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(3, 3)));
+        imshow("Gefuellte Huellen (Closing)", filled);
         waitKey(0);
 
 
-        // Das hier kommt weg, wen das hier nach erst einmal richtig implementiert ist!
         continue;
 
 
@@ -149,19 +160,15 @@ void create_using_added_frames(VideoCapture vid) {
         }
 
         for (auto it = momente.begin(); it != momente.end();) {
-            int naechster = -1;
+            auto naechster = it;
             for (auto it2 = momente.begin(); it2 != momente.end();) {
+                auto naechster = it2;
+                double kleinster_abstand = 0;
                 if (it != it2) {
-                    // TODO: hier den Abstand zwischen den Mittelpunkten suchen und wenn kleiner als alter eintragen!
-                    //int iterator_1_int = it2-momente.begin();
-                    //Point2f mitte()
+                    // Abstand vergleichen mit allen anderen Elementen
                 }
             }
         }
-
-
-
-        waitKey(0);
     }
 }
 
