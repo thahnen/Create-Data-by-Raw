@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <algorithm>
 #include <opencv2/opencv.hpp>
 
 #include "contour_worker.h"
@@ -20,67 +21,13 @@ using namespace cv;
  ***********************************************************************************************************************/
 
 
-void create_using_morph(VideoCapture vid) {
-    for (;;) {
-        Mat frame;
-        vid >> frame;
-        if (frame.empty()) {
-            cout << "Letzter Frame oder Video leer!" << endl;
-            break;
-        }
-
-        Mat open1 = frame.clone();
-        Mat open2 = frame.clone();
-        Mat open3 = frame.clone();
-
-        morphologyEx(open1, open1, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size(3, 3)));
-        morphologyEx(open2, open2, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(3, 3)));
-        morphologyEx(open3, open3, MORPH_OPEN, getStructuringElement(MORPH_RECT, Size(3, 3)));
-
-        imshow("Frame", frame);
-        imshow("Opening (Ellipse)", open1);
-        imshow("Opening (Cross)", open2);
-        imshow("Opening (Rect)", open3);
-        waitKey(0);
-    }
-}
-
-
-// Um unterschiedliche Bilder zu vergleichen!
-Mat get_hull_by_thresh(Mat src, double thresh) {
-    vector<vector<Point>> contours;
-    vector<Vec4i> hierarchy;
-
-    findContours(src, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
-
-    // TODO: Hier alle Kontouren aussortieren!
-    // 1) die kleiner als Threshold
-    // 2) Mittelpunkt der kleineren Fläche in der groesseren? -> kommt irgendwann
-    for (auto it = contours.begin(); it != contours.end();) {
-        double area = contourArea(*it, false);
-        if (area < thresh) {
-            it = contours.erase(it);
-        } else {
-            ++it;
-        }
-    }
-
-    vector<vector<Point>> hull(contours.size());
-    for (int i=0; i<contours.size(); i++) {
-        convexHull(Mat(contours[i]), hull[i], false);
-    }
-
-    Mat hull_img = Mat::zeros(src.size(), src.type());
-    for (int i=0; i<contours.size(); i++) {
-        drawContours(hull_img, hull, i, 255);
-    }
-
-    return hull_img;
-}
-
-
 void create_using_added_frames(VideoCapture vid) {
     for (;;) {
+        /***************************************************************************************************************
+         *
+         *      Frames einlesen, aus deren komulierten Werten Objekte erkannt werden sollen!
+         *
+         ***************************************************************************************************************/
         Mat frame1;
         vid >> frame1;
         if (frame1.empty()) {
@@ -114,7 +61,12 @@ void create_using_added_frames(VideoCapture vid) {
         threshold(added, added, 127, 255, THRESH_BINARY);
         //imshow("Added", added);
 
-        // Hier Hit-or-Miss Operator um kleine Elemente zu loeschen!
+
+        /***************************************************************************************************************
+         *
+         *      Hit-or-Miss Operator anwenden um kleine Elemente zu loeschen!
+         *
+         ***************************************************************************************************************/
         auto start = chrono::steady_clock::now();
         Mat hom_1x1 = hit_or_miss(added, (Mat_<int>(3, 3) <<
                 -1, -1, -1,
@@ -123,35 +75,50 @@ void create_using_added_frames(VideoCapture vid) {
                 );
         auto diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
         cout << "Verbrauchte Zeit um Hit-or-Miss zu erzeugen: " << diff << " Milliseconds" << endl;
-        imshow("Hit-or-Miss (1x1)", hom_1x1);
+        //imshow("Hit-or-Miss (1x1)", hom_1x1);
 
 
-        // Huellen berechnen lassen
-        Mat hull = Mat::zeros(hom_1x1.size(), hom_1x1.type());
+        /***************************************************************************************************************
+         *
+         *      Huellen das erste mal aus dem Hit-or-Miss-Bild berechnen!
+         *
+         ***************************************************************************************************************/
         start = chrono::steady_clock::now();
         vector<vector<Point>> hulls = get_hulls_by_thresh(hom_1x1, 0);
         diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
         cout << "Verbrauchte Zeit um Hull zu erzeugen: " << diff << " Milliseconds" << endl;
-        for (int i=0; i<hulls.size(); i++) {
-            drawContours(hull, hulls, i, 255);
-        }
-        imshow("Hull (HOM-1x1)", hull);
-        cout << "Hull-Size: " << hulls.size() << endl;
+        cout << "Hull-Size (vorher): " << hulls.size() << endl;
 
 
-        // mal fuellen
-        Mat filled = hull.clone();
+        /***************************************************************************************************************
+         *
+         *      Huellen noch einmal aus dem gefuellten Bild errechnen fuer bessere Ergebnisse!
+         *
+         ***************************************************************************************************************/
+        Mat filled = Mat::zeros(added.size(), added.type());
         for (vector<Point> huelle: hulls) {
             fillConvexPoly(filled, &huelle[0], huelle.size(), Scalar(255.0));
         }
-        imshow("Gefuellte Huellen", filled);
-        morphologyEx(filled, filled, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(3, 3)));
-        imshow("Gefuellte Huellen (Closing)", filled);
-        waitKey(0);
+        Mat hull = Mat::zeros(added.size(), added.type());
+        start = chrono::steady_clock::now();
+        hulls = get_hulls_by_thresh(filled, 0);
+        diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
+        cout << "Verbrauchte Zeit um Hull zu erzeugen: " << diff << " Milliseconds" << endl;
+        for (auto huelle : hulls) {
+            fillConvexPoly(hull, &huelle[0], huelle.size(), 255);
+        }
+        imshow("Hull (Gefuellt)", hull);
+        cout << "Hull-Size (nachher): " << hulls.size() << endl;
 
 
-        continue;
-
+        /***************************************************************************************************************
+         *
+         *      Alle jetzt noch verbliebenen Huellen zu Objekten (so gut es geht) zusammenfassen!
+         *
+         ***************************************************************************************************************/
+        start = chrono::steady_clock::now();
+        // Hier werden alle Indizes von Huellen gespeichert, die zu einem Objekt gehoeren koennten!
+        vector<vector<int>> objekte;
 
         // Fuer jede Huelle die naechste berechnen, damit diese zueinander gehoeren koennen
         vector<Moments> momente(hulls.size());
@@ -159,15 +126,140 @@ void create_using_added_frames(VideoCapture vid) {
             momente[i] = moments(hulls[i], false);
         }
 
-        for (auto it = momente.begin(); it != momente.end();) {
-            auto naechster = it;
-            for (auto it2 = momente.begin(); it2 != momente.end();) {
-                auto naechster = it2;
-                double kleinster_abstand = 0;
-                if (it != it2) {
-                    // Abstand vergleichen mit allen anderen Elementen
+        objekte.push_back(vector<int>{0});          // Der erste Index ist schon als Huelle eines Objekts vorhanden
+        for (int i=1; i<momente.size(); i++) {
+            int mgl_objekt_index = -1;              // Der Index von dem Objekt, zu dem die Huelle am ehesten gehoert
+            for (int j=0; j<objekte.size(); j++) {
+                for (int k : objekte[j]) {
+                    // Ueberpruefen, ob die beiden Objekte sich ueberlappen / nah beieinander liegen:
+                    // 1) Extrempunkte
+                    Point* huelle = &(hulls[i][0]);
+
+                    // 1.1) kleinstes X
+                    Point min_x = *min_element(huelle, huelle + (sizeof(huelle)/ sizeof(*huelle)), [](Point a, Point b) {
+                        return a.x < b.x;
+                    });
+
+                    if (pointPolygonTest(hulls[k], min_x, false) >= 0) {
+                        objekte[j].push_back(i);
+                        goto weiter_i;
+                    }
+
+                    // 1.2) kleinstes Y
+                    Point min_y = *min_element(huelle, huelle + (sizeof(huelle)/ sizeof(*huelle)), [](Point a, Point b) {
+                        return a.y < b.y;
+                    });
+
+                    if (pointPolygonTest(hulls[k], min_y, false) >= 0) {
+                        objekte[j].push_back(i);
+                        goto weiter_i;
+                    }
+
+                    // 1.3) groesstes X
+                    Point max_x = *max_element(huelle, huelle + (sizeof(huelle)/ sizeof(*huelle)), [](Point a, Point b) {
+                        return a.x > b.x;
+                    });
+
+                    if (pointPolygonTest(hulls[k], max_x, false) >= 0) {
+                        objekte[j].push_back(i);
+                        goto weiter_i;
+                    }
+
+                    // 1.4) groesstes Y
+                    Point max_y = *max_element(huelle, huelle + (sizeof(huelle)/ sizeof(*huelle)), [](Point a, Point b) {
+                        return a.y > b.y;
+                    });
+
+                    if (pointPolygonTest(hulls[k], max_y, false) >= 0) {
+                        objekte[j].push_back(i);
+                        goto weiter_i;
+                    }
+
+
+                    // 2) Abstand vergleichen, wenn kleiner als irgendein Wert
+                    /*Point mid1(momente[i].m10/momente[i].m00 , momente[i].m01/momente[i].m00);
+                    vector<double> dist{
+                            sqrt(pow(mid1.x - min_x.x, 2) + pow(mid1.y - min_x.y, 2)),      // Mittelpunkt -> min_x
+                            sqrt(pow(mid1.x - min_y.x, 2) + pow(mid1.y - min_y.y, 2)),      // Mittelpunkt -> min_y
+                            sqrt(pow(mid1.x - max_x.x, 2) + pow(mid1.y - max_x.y, 2)),      // Mittelpunkt -> max_x
+                            sqrt(pow(mid1.x - max_x.x, 2) + pow(mid1.y - max_x.y, 2))       // Mittelpunkt -> max_y
+                    };*/
+
+
+                    Point mid1(momente[i].m10/momente[i].m00 , momente[i].m01/momente[i].m00);
+                    Point mid2(momente[k].m10/momente[k].m00 , momente[k].m01/momente[k].m00);
+                    double thresh = 20;//(sqrt(contourArea(hulls[i], false)) + sqrt(contourArea(hulls[k], false)))/2;
+                    if (sqrt(pow(mid1.x - mid2.x, 2) + pow(mid1.y - mid2.y, 2)) < thresh) {
+                        objekte[j].push_back(i);
+                        goto weiter_i;
+                    }
                 }
             }
+
+            if (mgl_objekt_index == -1) {
+                // Es passt zu keinem Objekt (ergo zu keiner Huelle in dem Objekt-Array)
+                objekte.push_back(vector<int>{i});
+            }
+
+            weiter_i:;
+        }
+
+
+        // Jetzt noch einmal drueber gehen und alle Arrays mit nur einem Element aufleosen!
+        // aber nicht Elemente miteinander verbinden, die beide eine zu grosse Flaeche haben! -> fehlt noch!
+        for (auto it=objekte.begin(); it<objekte.end();) {
+            if ((*it).size() == 1) {
+                int einz = (*it)[0];
+                Point mid1(momente[einz].m10/momente[einz].m00, momente[einz].m01/momente[einz].m00);
+
+                double naechste_entfernung = 1000;      // der Wert weil groesser als groesstmoeglichste Entfernung im Bild!
+                auto naechstes_objekt = it;
+                for (auto it2=objekte.begin(); it2<objekte.end();) {
+                    if (!(it == it2 || (*it2).size() < 2)) {
+                        for (int index : *it2) {
+                            Point mid2(momente[index].m10/momente[index].m00, momente[index].m01/momente[index].m00);
+                            double abstand = sqrt(pow(mid1.x - mid2.x, 2) + pow(mid1.y - mid2.y, 2));
+
+                            if (abstand > naechste_entfernung || abstand > 100) continue;
+
+                            naechste_entfernung = abstand;
+                            naechstes_objekt = it2;
+                        }
+                    }
+                    it2++;
+                }
+
+                if(naechstes_objekt != it) {
+                    (*naechstes_objekt).push_back(einz);
+                    it = objekte.erase(it);
+                } else {
+                    it++;
+                }
+            } else {
+                it++;
+            }
+        }
+
+        diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
+        cout << "Verbrauchte Zeit um Objekte zusammenzufuegen: " << diff << " Milliseconds" << endl;
+
+        // eigentlich muesste man hier fuer alle Objekte jedes Hull nehmen und ueberpruefen, ob es neben einem anderen liegt
+
+
+        // Zu Testzwecken die Objekte anzeigen lassen
+        int anz_obj = objekte.size();
+        cout << "Anzahl gefundener Objekte: " << anz_obj << endl;
+
+        for (int i=0; i< anz_obj; i++) {
+            Mat objekte_img = Mat::zeros(filled.size(), filled.type());
+
+            for (int j=0; j<objekte[i].size(); j++) {
+                int index = objekte[i][j];
+                fillConvexPoly(objekte_img, &(hulls[index][0]), hulls[index].size(), Scalar(255));
+            }
+
+            imshow("Objekte", objekte_img);
+            waitKey(0);
         }
     }
 }
@@ -183,7 +275,7 @@ int main() {
         return 1;
     }
 
-    //create_using_morph(vid);
+    // Daten aus addierten Frames extrahieren!
     create_using_added_frames(vid);
 
     return 0;

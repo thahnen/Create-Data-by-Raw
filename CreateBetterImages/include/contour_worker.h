@@ -25,7 +25,6 @@ Mat hit_or_miss(Mat src, Mat kernel) {
     Mat output;
     morphologyEx(src, output, MORPH_HITMISS, kernel);
     return src - output;
-
 }
 
 
