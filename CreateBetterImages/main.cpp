@@ -35,6 +35,7 @@ void create_using_added_frames(VideoCapture vid) {
             break;
         }
         cvtColor(frame1, frame1, COLOR_BGR2GRAY);
+        //imshow("Frame 1", frame1);
 
         Mat frame2;
         vid >> frame2;
@@ -43,6 +44,9 @@ void create_using_added_frames(VideoCapture vid) {
             break;
         }
         cvtColor(frame2, frame2, COLOR_BGR2GRAY);
+        //imshow("Frame 2", frame2);
+
+        Mat added = frame1 + frame2;
 
         #if using_3_frames
         Mat frame3;
@@ -52,14 +56,14 @@ void create_using_added_frames(VideoCapture vid) {
             break;
         }
         cvtColor(frame3, frame3, COLOR_BGR2GRAY);
-        Mat added = frame1 + frame2 + frame3;
-        #else
-        Mat added = frame1 + frame2;
+        //imshow("Frame 3", frame3);
+
+        added += frame3;
         #endif
 
         // Muss gemacht werden, da durch Konvertiertung zum Video andere Graustufen mit eingebracht wurden!
         threshold(added, added, 127, 255, THRESH_BINARY);
-        //imshow("Added", added);
+        imshow("Added", added);
 
 
         /***************************************************************************************************************
@@ -75,7 +79,14 @@ void create_using_added_frames(VideoCapture vid) {
                 );
         auto diff = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-start).count();
         cout << "Verbrauchte Zeit um Hit-or-Miss zu erzeugen: " << diff << " Milliseconds" << endl;
-        //imshow("Hit-or-Miss (1x1)", hom_1x1);
+        imshow("Hit-or-Miss (1x1)", hom_1x1);
+
+
+
+        // kommt wieder weg!
+        //waitKey(0);
+        //continue;
+
 
 
         /***************************************************************************************************************
