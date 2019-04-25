@@ -33,11 +33,11 @@
   <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/main.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="375">
-              <caret line="85" column="28" lean-forward="true" selection-start-line="85" selection-start-column="28" selection-end-line="85" selection-end-column="28" />
+            <state relative-caret-position="2554">
+              <caret line="190" column="62" lean-forward="true" selection-start-line="190" selection-start-column="62" selection-end-line="190" selection-end-column="62" />
               <folding>
                 <element signature="e#0#19#0" expanded="true" />
               </folding>
@@ -45,11 +45,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/include/contour_worker.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2029">
-              <caret line="161" column="7" selection-start-line="161" selection-start-column="7" selection-end-line="161" selection-end-column="7" />
+            <state relative-caret-position="154">
+              <caret line="164" column="79" lean-forward="true" selection-start-line="164" selection-start-column="79" selection-end-line="164" selection-end-column="79" />
               <folding>
                 <element signature="e#131#148#0" expanded="true" />
               </folding>
@@ -67,8 +67,8 @@
       <list>
         <option value="$PROJECT_DIR$/CMakeLists.txt" />
         <option value="$PROJECT_DIR$/include/object.h" />
-        <option value="$PROJECT_DIR$/include/contour_worker.h" />
         <option value="$PROJECT_DIR$/main.cpp" />
+        <option value="$PROJECT_DIR$/include/contour_worker.h" />
       </list>
     </option>
   </component>
@@ -84,6 +84,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -100,7 +101,6 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -156,17 +156,19 @@
       <workItem from="1555581544686" duration="7000" />
       <workItem from="1555581569425" duration="3000" />
       <workItem from="1555581584838" duration="5877000" />
+      <workItem from="1556176621327" duration="4000" />
+      <workItem from="1556176653072" duration="6409000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="55033000" />
+    <option name="totallyTimeSpent" value="61446000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-1" y="28" width="1922" height="1025" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.14674494" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.14994664" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -216,22 +218,22 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/include/contour_worker.h">
+    <entry file="file://$PROJECT_DIR$/main.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2029">
-          <caret line="161" column="7" selection-start-line="161" selection-start-column="7" selection-end-line="161" selection-end-column="7" />
+        <state relative-caret-position="2554">
+          <caret line="190" column="62" lean-forward="true" selection-start-line="190" selection-start-column="62" selection-end-line="190" selection-end-column="62" />
           <folding>
-            <element signature="e#131#148#0" expanded="true" />
+            <element signature="e#0#19#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/main.cpp">
+    <entry file="file://$PROJECT_DIR$/include/contour_worker.h">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="375">
-          <caret line="85" column="28" lean-forward="true" selection-start-line="85" selection-start-column="28" selection-end-line="85" selection-end-column="28" />
+        <state relative-caret-position="154">
+          <caret line="164" column="79" lean-forward="true" selection-start-line="164" selection-start-column="79" selection-end-line="164" selection-end-column="79" />
           <folding>
-            <element signature="e#0#19#0" expanded="true" />
+            <element signature="e#131#148#0" expanded="true" />
           </folding>
         </state>
       </provider>

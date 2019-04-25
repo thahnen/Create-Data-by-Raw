@@ -14,7 +14,7 @@ using namespace cv;
 
 /***********************************************************************************************************************
  *
- *      Aus der FPS koennte man sich herleiten wie lange in Bild maximal zur Bearbeitung benutzt werden darf,
+ *      Aus der FPS koennte man sich herleiten wie lange ein Bild maximal zur Bearbeitung brauchen darf,
  *      damit das Programm noch echtzeitfaehig ist!
  *      Es sind pro Ordner 1000 Bilder und ein Ordner hat die Zeitspanne 1min?
  *
@@ -25,7 +25,7 @@ void create_using_added_frames(VideoCapture vid) {
     for (;;) {
         /***************************************************************************************************************
          *
-         *      Frames einlesen, aus deren komulierten Werten Objekte erkannt werden sollen!
+         *      Frames einlesen, aus deren kumulierten Werten Objekte erkannt werden sollen!
          *
          ***************************************************************************************************************/
         Mat frame1;
