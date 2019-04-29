@@ -115,13 +115,12 @@ vector<vector<Point>> get_hulls_by_thresh(Mat src, double thresh_area) {
  *      get_hulls_by_thresh2 ( Mat src, double area_thresh ) => vector<vector<Point>>
  *      =============================================================================
  *
- *      Ruft intern get_hulls_by_thresh auf, iteriert danach nur noch einmal rueckwaerts durch den Vector um
- *      zu ueberpruefen, ob das jeweilige Hull in einem danach liegt?
+ *      Geht anders als get_hulls_by_thresh an die Sache heran, indem direkt versucht wird mehr auszumisten,
+ *      damit nachher nicht zu viel uebrig ist und ggf nochmal nach einem Hull gesucht werden muss!
  *
- *      TODO: irgendwie wird noch nichts geloescht, aber warum?
- *      TODO: ggf andersherum machen:
- *              => 1) hochzaehlen, das zu ueberpruefen vom aktuellen runterzaehlen
- *              == 2) runterzaehlen, das zu ueberpruefen vom aktuellen hochzaehlen
+ *      1) alle Objekte, die vollstaendig in anderen liegen fallen raus
+ *      2) alle Objekte, die sich mit anderen ueberlappen, werden zu einem zusammengefasst
+ *      3) alle Objekte, die nicht die Kriterien erfuellen fallen komplett raus
  *
  ***********************************************************************************************************************/
 vector<vector<Point>> get_hulls_by_thresh2(Mat src, double thresh_area) {
@@ -146,13 +145,7 @@ vector<vector<Point>> get_hulls_by_thresh2(Mat src, double thresh_area) {
         convexHull(Mat(contours[i]), hull[i], false);
     }
 
-    // Alle Momente bekommen, damit man spaeter damit rechnen kann
-    vector<Moments> momente(hull.size());
-    for (int i=0; i<hull.size(); i++) {
-        momente[i] = moments(hull[i], true);
-    }
-
-
+    // Hier werden alle Huellen aussortiert, die weniger als 3 Eckpunkte haben (koennen ergo keine Flaeche aufspannen)
     for (auto it = hull.begin(); it != hull.end();) {
         if ((*it).size() < 3) {
             it = hull.erase(it);
@@ -161,21 +154,27 @@ vector<vector<Point>> get_hulls_by_thresh2(Mat src, double thresh_area) {
         }
     }
 
+    // Alle Momente bekommen, damit man spaeter damit rechnen kann
+    vector<Moments> momente(hull.size());
+    for (int i=0; i<hull.size(); i++) {
+        momente[i] = moments(hull[i], true);
+    }
+
 
     // TODO: hier irgendwie einen Fehler werfen, weil kein Hull gefunden wurde!
     if (hull.size() < 1) return hull;
 
 
+    // TODO: ggf im gleichen Abwasch ueberpruefen, ob Flachen uberlappen (zum Grossteil), dann werden die zusammengefasst!
+    // TODO: am besten, indem man ueberprueft, ob die Punkte ineinander liegen?
     // Fuer jede Huelle ueberpruefen, ob sie in einer folgenden Huelle liegt oder umgekehrt!
-    // TODO: vorher noch die Momente ausrechnen, damit die nicht jedes Mal in der Schleife neu errechnet werden muessen
     for (auto it=hull.begin(); it<hull.end()-1;) {
         for (auto it2=it+1; it2<hull.end();) {
             // Ueberpruefen, ob Huellen-Flaeche kleiner ist als die der folgenden Huelle (-> als Mass dass sie darin liegt)
-            // GGf noch eine Unterscheidung, ob die Flache DEUTLICH kleiner ist?
             double area1 = contourArea(*it, false);
             double area2 = contourArea(*it2, false);
 
-            // TODO: Damit Proportion immer im Intervall (0, 1] = ]0, 1] bleibt wird Variable benutzt!
+            // TODO: Damit Proportion immer im Intervall (0, 1] := 0 < x <= 1 bleibt wird Variable benutzt!
             bool folgendes_kleiner = area1 >= area2;
             double proportion = folgendes_kleiner ? area2/area1 : area1/area2;
 
@@ -187,7 +186,7 @@ vector<vector<Point>> get_hulls_by_thresh2(Mat src, double thresh_area) {
                 // TODO: => Proportion gleich (kp > 0.95) fuer die restlichen Punkte ueberpruefen, ob in Flaeche liegen
 
                 // Ueberpruefen, ob die Huelle auch wirklich in der anderen liegt
-                // 1) Mittelpunkt ?
+                // TODO: 1) Mittelpunkt ?
                 Moments m = moments(*it, false);
                 Point2f middle(m.m10/m.m00, m.m01/m.m00);
 
@@ -199,7 +198,7 @@ vector<vector<Point>> get_hulls_by_thresh2(Mat src, double thresh_area) {
                     }
                 }
 
-                // 2) Mittelpunkt weitgenug vom Rand entfernt (d.h. nah genug am anderen Mittelpunkt dran)
+                // TODO: 2) Mittelpunkt weitgenug vom Rand entfernt (d.h. nah genug am anderen Mittelpunkt dran)
                 if (inside && proportion > 0.25) {
                     bool first_done = false;
                     double distance = pointPolygonTest(*it2, middle, true);
@@ -224,7 +223,7 @@ vector<vector<Point>> get_hulls_by_thresh2(Mat src, double thresh_area) {
                 Point* huelle = &((*it)[0]);                // das hier sollte ein C-Array anstatt des vector sein!
                 Point min_x, min_y, max_x, max_y;           // hier gespeichert, damit man die im 4. Schritt noch verwenden kann!
 
-                // 3) Extrempunkte in anderer Flaeche?
+                // TODO: 3) Extrempunkte in anderer Flaeche?
                 if (inside && proportion > 0.75) {
                     // 1. kleinstes X
                     min_x = *min_element(huelle, huelle + (sizeof(huelle)/ sizeof(*huelle)), [](Point a, Point b) {
@@ -269,9 +268,18 @@ vector<vector<Point>> get_hulls_by_thresh2(Mat src, double thresh_area) {
                     }
                 }
 
-                // 4) Restliche Punkte ?
+                // TODO: 4) Restliche Punkte ?
                 if (inside && proportion > 0.95) {
                     int anz_huellen_punkte = (*it).size();
+                    for (Point punkt : *it) {
+                        // TODO: durch alle Punkte iterieren, die nicht die Maxima / Minima sind!
+                        if (!(punkt == min_x || punkt == min_y || punkt == max_x || punkt == max_y)) {
+                            if (pointPolygonTest(*it2, punkt, false) < 0) {
+                                // liegt nicht drin
+                                inside = false;
+                            }
+                        }
+                    }
                 }
             } else {
                 // Flaeche groesser als die der folgenden Huelle

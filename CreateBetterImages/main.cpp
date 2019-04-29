@@ -280,6 +280,8 @@ void create_using_added_frames(VideoCapture vid) {
  *
  ***********************************************************************************************************************/
 int main() {
+    // hier irgendwie mit Boost oder so immer einzufaelliges auswaehlen
+    // das beste waer noch, wenn man irgendwann die von mir gelabelten Ergebnisse hiermit vergleichen koennte oder so!
     VideoCapture vid("../media/01.mp4");
     if (!vid.isOpened()) {
         cerr << "Video kann nicht geoeffnet werden!" << endl;
